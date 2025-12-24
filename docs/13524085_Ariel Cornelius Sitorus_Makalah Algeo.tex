@@ -1,0 +1,615 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{fancyhdr}
+\usepackage{multirow}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{subcaption}
+
+% =============================================================================
+% PYTHON CODE LISTING CONFIGURATION
+% =============================================================================
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.97,0.97,0.97}
+\definecolor{codeblue}{rgb}{0.1,0.1,0.6}
+
+\lstdefinestyle{pythonstyle}{
+    language=Python,
+    backgroundcolor=\color{backcolour},
+    basicstyle=\scriptsize\ttfamily,
+    keywordstyle=\color{codeblue}\bfseries,
+    commentstyle=\color{codegreen}\itshape,
+    stringstyle=\color{codepurple},
+    numberstyle=\tiny\color{codegray},
+    numbers=left,
+    numbersep=4pt,
+    frame=single,
+    framerule=0.4pt,
+    rulecolor=\color{codegray},
+    breaklines=true,
+    breakatwhitespace=false,
+    tabsize=2,
+    showspaces=false,
+    showstringspaces=false,
+    captionpos=b,
+    xleftmargin=1.2em,
+    framexleftmargin=0.8em,
+    columns=fullflexible,
+    keepspaces=true
+}
+\lstset{style=pythonstyle}
+
+% =============================================================================
+% HEADER CONFIGURATION (IF2123 REQUIRED)
+% =============================================================================
+
+% =============================================================================
+% TITLE & AUTHOR
+% =============================================================================
+\title{Eigenvectors as Directions of Meaning in High-Dimensional Data: A Geometric Perspective for Drone State and Motion Analysis}
+
+\author{\IEEEauthorblockN{Ariel Cornelius Sitorus - 13524085}
+\IEEEauthorblockA{\textit{Program Studi Teknik Informatika} \\
+\textit{Sekolah Teknik Elektro dan Informatika}\\
+\textit{Institut Teknologi Bandung}, Jl. Ganesha 10 Bandung 40132, Indonesia \\
+13524085@std.stei.itb.ac.id}
+}
+
+\begin{document}
+
+\maketitle
+
+% ============================================================================
+% ABSTRACT
+% ============================================================================
+\begin{abstract}
+This paper explores eigenvectors and eigenvalues from a geometric perspective, specifically how these concepts can be applied to analyze drone position data in 3D space. The core idea is simple: if we have a collection of data points forming a particular pattern (e.g., elongated in one direction), the eigenvectors of the covariance matrix will point toward that pattern. For drone analysis, the dominant eigenvector indicates the primary flight direction, while eigenvalues show how much variance exists in each direction. Using simulated linear and spiral trajectories, this paper demonstrates that eigenvectors can reconstruct flight direction with high accuracy (error around $1.42^{\circ}$). This approach forms the mathematical foundation of Principal Component Analysis (PCA), widely used in machine learning and data analysis.
+\end{abstract}
+
+% ============================================================================
+% KEYWORDS
+% ============================================================================
+\begin{IEEEkeywords}
+Eigenvector, Eigenvalue, Covariance Matrix, Spectral Theorem, Quadratic Forms, Orthogonal Projection, Euclidean Space, Basis Transformation, Drone Analysis.
+\end{IEEEkeywords}
+
+% ============================================================================
+% I. INTRODUCTION
+% ============================================================================
+\section{Introduction}
+
+Have you ever wondered how to extract ``meaningful'' information from a bunch of data points scattered in 3D space? For instance, if we have drone position data from point A to B, can we determine its flight direction without knowing the start and end points?
+
+The answer lies in \textbf{Eigenvectors} and \textbf{Eigenvalues}, two topics that might seem abstract when first encountered in linear algebra class. But behind the mathematical definition $A\mathbf{v} = \lambda\mathbf{v}$, there's a powerful geometric meaning: eigenvectors show ``special'' directions where data has maximum variation.
+
+Imagine a set of data points forming an elongated ellipse. If we compute the eigenvectors of the covariance matrix, the first eigenvector will point along the long axis, while the second points along the short axis. These are called the \textbf{Principal Axes}, the main directions that describe the ``shape'' of the data distribution.
+
+In this paper, I will explain:
+\begin{itemize}
+    \item How eigenvectors can ``discover'' drone flight direction just from position data
+    \item Why eigenvalues represent variance (how spread out the data is in a certain direction)
+    \item The connection between covariance matrix and hyper-ellipsoid geometry
+    \item Practical implementation using Python and NumPy
+\end{itemize}
+
+The paper is structured as follows: Section II covers theoretical foundations on vector spaces and eigendecomposition. Section III explains the drone simulation methodology. Section IV presents the Python implementation. Section V discusses experimental results, and Section VI contains conclusions.
+
+% ============================================================================
+% II. THEORETICAL FOUNDATION
+% ============================================================================
+\section{Theoretical Foundation}
+
+To provide a robust analysis, we must first establish the definitions and theorems governing the behavior of vectors in Euclidean space.
+
+\subsection{Linear Algebra and Eigenvectors}
+
+\subsubsection{Euclidean Vector Spaces and Inner Products}
+We define our workspace as the real coordinate space $\mathbb{R}^n$, equipped with the standard inner product (dot product). For any two vectors $\mathbf{u}, \mathbf{v} \in \mathbb{R}^n$:
+\begin{equation}
+    \langle \mathbf{u}, \mathbf{v} \rangle = \mathbf{u}^T \mathbf{v} = \sum_{i=1}^{n} u_i v_i
+\end{equation}
+
+The inner product induces a norm $\|\mathbf{v}\| = \sqrt{\langle \mathbf{v}, \mathbf{v} \rangle}$, which defines the geometric ``length'' of a vector. Crucially, the inner product allows us to define \textbf{Orthogonality}. Two vectors are orthogonal if and only if their inner product is zero.
+
+\subsubsection{Linear Transformations and Change of Basis}
+A linear transformation $T: \mathbb{R}^n \to \mathbb{R}^n$ maps vectors while preserving vector addition and scalar multiplication. Every linear transformation can be represented by a matrix $A$.
+
+Consider a vector $\mathbf{x}$. Its coordinates $[\mathbf{x}]_B$ relative to a basis $B = \{\mathbf{b}_1, \dots, \mathbf{b}_n\}$ are related to its standard coordinates $[\mathbf{x}]_E$ by the change-of-basis matrix $P$:
+\begin{equation}
+    [\mathbf{x}]_E = P [\mathbf{x}]_B
+\end{equation}
+where the columns of $P$ are the basis vectors of $B$. If $B$ is an \textbf{Orthonormal Basis}, then $P$ is an orthogonal matrix ($P^T = P^{-1}$).
+
+\subsubsection{The Eigenvalue Problem}
+An eigenvector of a square matrix $A$ is a non-zero vector $\mathbf{v}$ such that:
+\begin{equation}
+    A\mathbf{v} = \lambda\mathbf{v}
+\end{equation}
+where $\lambda$ is the eigenvalue. Geometrically, eigenvectors represent the \textbf{invariant directions} of the transformation. To find eigenvalues, we solve the \textbf{characteristic equation}:
+\begin{equation}
+    \det(A - \lambda I) = 0
+\end{equation}
+
+\subsection{Geometric Interpretation of High-Dimensional Data}
+
+\subsubsection{Derivation of the Covariance Matrix}
+Let $X$ be an $N \times d$ matrix representing $N$ data points in $\mathbb{R}^d$. The mean vector $\boldsymbol{\mu}$ is the centroid of the data. The sample covariance matrix $\Sigma$ is:
+\begin{equation}
+    \Sigma = \frac{1}{N-1} \bar{X}^T \bar{X}
+\end{equation}
+where $\bar{X}$ is the centered data matrix. The element $\Sigma_{ij}$ represents the covariance between dimension $i$ and $j$.
+
+\subsubsection{The Spectral Theorem}
+The \textbf{Spectral Theorem} guarantees that for symmetric matrix $\Sigma$:
+\begin{enumerate}
+    \item Eigenvalues are real.
+    \item The matrix is always diagonalizable.
+    \item Eigenvectors corresponding to distinct eigenvalues are orthogonal.
+\end{enumerate}
+
+Thus, there exists an orthogonal matrix $Q$ and diagonal matrix $\Lambda$ such that:
+\begin{equation}
+    \Sigma = Q \Lambda Q^T
+\end{equation}
+
+\subsubsection{Quadratic Forms and Hyper-Ellipsoids}
+The equation:
+\begin{equation}
+    (\mathbf{x} - \boldsymbol{\mu})^T \Sigma^{-1} (\mathbf{x} - \boldsymbol{\mu}) = c^2
+\end{equation}
+defines a \textbf{Hyper-ellipsoid} in $\mathbb{R}^d$. By substituting $\Sigma = Q \Lambda Q^T$:
+\begin{equation}
+    \sum_{i=1}^{d} \frac{y_i^2}{\lambda_i} = c^2
+\end{equation}
+
+This proves that:
+\begin{itemize}
+    \item Eigenvectors (columns of $Q$) are the directions of the principal axes.
+    \item Square roots of eigenvalues ($\sqrt{\lambda_i}$) are the lengths of the semi-axes.
+\end{itemize}
+
+% ============================================================================
+% III. METHODOLOGY
+% ============================================================================
+\section{Methodology}
+
+\subsection{Drone State and Motion Modeling}
+
+The drone state model is defined in Euclidean space $\mathbb{R}^3$ with position vector:
+\begin{equation}
+    \mathbf{s}(t) = \begin{bmatrix} x(t) \\ y(t) \\ z(t) \end{bmatrix}
+\end{equation}
+
+\subsection{High-Dimensional Data Representation}
+
+\subsubsection{Transformation Setup}
+We begin with a point cloud $Z$ distributed as $\mathcal{N}(0, I)$ (unit sphere). We apply:
+
+\textbf{1. Scaling Transformation ($S$):}
+\begin{equation}
+    S = \begin{bmatrix} 10 & 0 & 0 \\ 0 & 3 & 0 \\ 0 & 0 & 1 \end{bmatrix}
+\end{equation}
+with $\sigma_1 = 10$ (primary motion), $\sigma_2 = 3$ (drift), $\sigma_3 = 1$ (noise).
+
+\textbf{2. Rotation Transformation ($R$):}
+\begin{equation}
+    R_z(45^{\circ}) = \begin{bmatrix} 
+    \frac{\sqrt{2}}{2} & -\frac{\sqrt{2}}{2} & 0 \\ 
+    \frac{\sqrt{2}}{2} & \frac{\sqrt{2}}{2} & 0 \\ 
+    0 & 0 & 1 
+    \end{bmatrix}
+\end{equation}
+
+The synthetic dataset is:
+\begin{equation}
+    \mathbf{x}_i = R \cdot S \cdot \mathbf{z}_i + \mathbf{t}
+\end{equation}
+
+\subsection{Eigenvector Analysis Pipeline}
+
+The reconstruction algorithm:
+\begin{enumerate}
+    \item Compute centroid $\hat{\boldsymbol{\mu}}$
+    \item Compute centered matrix $\bar{X}$
+    \item Compute covariance matrix $\Sigma$
+    \item Solve $\det(\Sigma - \lambda I) = 0$ for eigenvalues
+    \item Find eigenvectors from nullspace of $(\Sigma - \lambda I)$
+\end{enumerate}
+
+% ============================================================================
+% IV. IMPLEMENTATION
+% ============================================================================
+\section{Implementation}
+
+This section presents the modular Python implementation. The code is organized into separate modules for maintainability and reusability.
+
+\subsection{Project Structure}
+
+The implementation follows a modular architecture:
+\begin{itemize}
+    \item \texttt{data\_generation.py}: Synthetic data generation
+    \item \texttt{eigenanalysis.py}: Eigenstructure and PCA analysis
+    \item \texttt{interpretation.py}: Drone dynamics interpretation
+    \item \texttt{visualization.py}: 3D visualization
+    \item \texttt{main.py}: Main entry point
+\end{itemize}
+
+\subsection{Data Generation Module}
+
+\begin{lstlisting}[caption={data\_generation.py -- Synthetic drone data generation}]
+import numpy as np
+
+def generate_linear_flight(n_samples=500, seed=42):
+    """Generate anisotropic linear flight data."""
+    np.random.seed(seed)
+    white_data = np.random.randn(3, n_samples)
+    
+    # Scaling: variances = (100, 9, 1)
+    scale = np.array([[10, 0, 0],
+                      [0,  3, 0],
+                      [0,  0, 1]])
+    
+    # Rotation matrices (45 deg)
+    theta = np.radians(45)
+    c, s = np.cos(theta), np.sin(theta)
+    
+    rotation_z = np.array([[c, -s, 0],
+                           [s,  c, 0],
+                           [0,  0, 1]])
+    
+    rotation_y = np.array([[ c, 0, s],
+                           [ 0, 1, 0],
+                           [-s, 0, c]])
+    
+    transform = rotation_y @ rotation_z @ scale
+    return (transform @ white_data).T
+
+def generate_spiral_flight(n_samples=500, seed=42,
+                           radius=10, height=30):
+    """Generate spiral ascent trajectory."""
+    np.random.seed(seed)
+    t = np.linspace(0, 6*np.pi, n_samples)
+    
+    x = radius * np.cos(t) + np.random.randn(n_samples)*0.5
+    y = radius * np.sin(t) + np.random.randn(n_samples)*0.5
+    z = (height/(6*np.pi)) * t + np.random.randn(n_samples)*0.3
+    
+    return np.column_stack([x, y, z])
+\end{lstlisting}
+
+\subsection{Eigenanalysis Module}
+
+\begin{lstlisting}[caption={eigenanalysis.py -- Core eigenstructure analysis}]
+import numpy as np
+
+def compute_covariance(data):
+    """Compute centered data and covariance matrix."""
+    mean_vec = np.mean(data, axis=0)
+    centered = data - mean_vec
+    cov_matrix = np.cov(centered, rowvar=False)
+    return mean_vec, centered, cov_matrix
+
+def eigendecompose(matrix):
+    """Eigendecomposition with descending sort."""
+    eigenvalues, eigenvectors = np.linalg.eig(matrix)
+    idx = eigenvalues.argsort()[::-1]
+    return eigenvalues[idx].real, eigenvectors[:, idx].real
+
+def analyze_eigenstructure(data):
+    """Complete eigenstructure analysis."""
+    mean_vec, centered, cov_matrix = compute_covariance(data)
+    eigenvalues, eigenvectors = eigendecompose(cov_matrix)
+    explained_var = eigenvalues / eigenvalues.sum()
+    
+    return {
+        'mean': mean_vec,
+        'covariance': cov_matrix,
+        'eigenvalues': eigenvalues,
+        'eigenvectors': eigenvectors,
+        'explained_variance': explained_var
+    }
+
+def pca_transform(data, n_components=2):
+    """Apply PCA dimensionality reduction."""
+    result = analyze_eigenstructure(data)
+    centered = data - result['mean']
+    W = result['eigenvectors'][:, :n_components]
+    projected = centered @ W
+    explained = result['explained_variance'][:n_components]
+    return projected, explained, W
+\end{lstlisting}
+
+\subsection{Interpretation Module}
+
+\begin{lstlisting}[caption={interpretation.py -- Flight dynamics interpretation}]
+import numpy as np
+
+def compute_heading_pitch(eigenvector):
+    """Compute heading and pitch from eigenvector."""
+    v = eigenvector
+    heading = np.degrees(np.arctan2(v[1], v[0]))
+    horiz = np.sqrt(v[0]**2 + v[1]**2)
+    pitch = np.degrees(np.arctan2(v[2], horiz))
+    return heading, pitch
+
+def interpret_eigenvalues(eigenvalues):
+    """Interpret eigenvalues for drone dynamics."""
+    ratios = eigenvalues / eigenvalues.sum()
+    labels = ["Primary motion", "Lateral drift", "Vertical noise"]
+    
+    results = []
+    for i, (val, ratio) in enumerate(zip(eigenvalues, ratios)):
+        results.append({
+            'eigenvalue': val,
+            'variance_percent': ratio * 100,
+            'interpretation': labels[i] if i < 3 else f"PC{i+1}"
+        })
+    return results
+
+def analyze_flight_direction(eigenvectors, eigenvalues):
+    """Complete flight direction analysis."""
+    heading, pitch = compute_heading_pitch(eigenvectors[:, 0])
+    eigen_interp = interpret_eigenvalues(eigenvalues)
+    
+    # Check for degeneracy
+    ratio = eigenvalues[0]/eigenvalues[1] if eigenvalues[1] > 0 else np.inf
+    is_degenerate = ratio < 1.5
+    
+    return {
+        'heading_deg': heading,
+        'pitch_deg': pitch,
+        'components': eigen_interp,
+        'is_degenerate': is_degenerate
+    }
+\end{lstlisting}
+
+\subsection{Visualization Module}
+
+\begin{lstlisting}[caption={visualization.py -- 3D visualization functions}]
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+def visualize_eigenanalysis(data, analysis, title=None, 
+                            save_path=None):
+    """Complete eigenanalysis visualization."""
+    fig = plt.figure(figsize=(12, 9))
+    ax = fig.add_subplot(111, projection='3d')
+    
+    mean = analysis['mean']
+    evals = analysis['eigenvalues']
+    evecs = analysis['eigenvectors']
+    
+    # Plot point cloud
+    ax.scatter(data[:,0], data[:,1], data[:,2], 
+               alpha=0.3, s=5, label='Positions')
+    
+    # Plot centroid
+    ax.scatter(*mean, color='red', s=100, label='Centroid')
+    
+    # Plot eigenvectors
+    colors = ['red', 'green', 'blue']
+    for i in range(3):
+        length = np.sqrt(evals[i]) * 2
+        ax.quiver(*mean, *(evecs[:,i]*length),
+                  color=colors[i], linewidth=3,
+                  label=f'v{i+1} ({evals[i]:.1f})')
+    
+    ax.set_xlabel('X'); ax.set_ylabel('Y'); ax.set_zlabel('Z')
+    ax.set_title(title or 'Eigenvector Analysis')
+    ax.legend()
+    
+    if save_path:
+        plt.savefig(save_path, dpi=300)
+    plt.show()
+\end{lstlisting}
+
+\subsection{Main Entry Point}
+
+\begin{lstlisting}[caption={main.py -- Main execution script}]
+from data_generation import generate_linear_flight, generate_spiral_flight
+from eigenanalysis import analyze_eigenstructure, pca_transform
+from interpretation import analyze_flight_direction
+from visualization import visualize_eigenanalysis
+
+def main():
+    # Scenario A: Linear Flight
+    linear_data = generate_linear_flight(n_samples=500)
+    linear_analysis = analyze_eigenstructure(linear_data)
+    flight_dir = analyze_flight_direction(
+        linear_analysis['eigenvectors'],
+        linear_analysis['eigenvalues']
+    )
+    
+    print(f"Heading: {flight_dir['heading_deg']:.2f} deg")
+    print(f"Eigenvalues: {linear_analysis['eigenvalues']}")
+    
+    visualize_eigenanalysis(linear_data, linear_analysis,
+                            title="Linear Flight Analysis",
+                            save_path="linear_flight.png")
+    
+    # Scenario B: Spiral Flight
+    spiral_data = generate_spiral_flight(n_samples=500)
+    spiral_analysis = analyze_eigenstructure(spiral_data)
+    
+    visualize_eigenanalysis(spiral_data, spiral_analysis,
+                            title="Spiral Flight Analysis",
+                            save_path="spiral_flight.png")
+
+if __name__ == "__main__":
+    main()
+\end{lstlisting}
+
+% ============================================================================
+% V. RESULTS AND DISCUSSION
+% ============================================================================
+\section{Results and Discussion}
+
+\subsection{Eigenvalue Spectrum Analysis}
+
+After processing $N=500$ samples, eigendecomposition yielded the results in Table \ref{tab:evals}.
+
+\begin{table}[htbp]
+\caption{Comparison of Theoretical vs. Computed Eigenvalues}
+\begin{center}
+\begin{tabular}{cccc}
+\toprule
+\textbf{Component} & \textbf{Theoretical} & \textbf{Computed} & \textbf{Error} \\
+\midrule
+$\lambda_1$ (Primary) & $100.00$ & $96.34$ & $3.66\%$ \\
+$\lambda_2$ (Drift) & $9.00$ & $8.56$ & $4.89\%$ \\
+$\lambda_3$ (Noise) & $1.00$ & $1.01$ & $1.00\%$ \\
+\bottomrule
+\end{tabular}
+\label{tab:evals}
+\end{center}
+\end{table}
+
+The dominant eigenvalue $\lambda_1 \approx 96.34$ absorbs approximately $91\%$ of total variance, confirming highly anisotropic data.
+
+\subsection{Eigenvector Directional Accuracy}
+
+The primary eigenvector was computed as:
+\begin{equation}
+    \mathbf{v}_1 = \begin{bmatrix} 0.7244 \\ 0.6893 \\ -0.0061 \end{bmatrix}
+\end{equation}
+
+The estimated heading angle:
+\begin{equation}
+    \theta_{\text{est}} = \arctan\left(\frac{0.6893}{0.7244}\right) \approx 43.58^{\circ}
+\end{equation}
+
+With ground truth of $45.00^{\circ}$, the angular error is only $\mathbf{1.42^{\circ}}$.
+
+\subsection{Visual Analysis: Linear Flight}
+
+Figure \ref{fig:linear} shows the 3D visualization of linear flight data with eigenvector overlays. The red arrow (primary eigenvector $\mathbf{v}_1$) clearly aligns with the elongated direction of the point cloud.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\linewidth]{linear_flight_eigen.png}
+    \caption{Linear Flight Analysis. The primary eigenvector (red) aligns with the major axis of the ellipsoidal point cloud, accurately recovering the $45^{\circ}$ heading angle with error of only $1.42^{\circ}$.}
+    \label{fig:linear}
+\end{figure}
+
+\subsection{Visual Analysis: Spiral Flight}
+
+Figure \ref{fig:spiral} shows the spiral trajectory analysis. Note the near-equal eigenvalues in the XY-plane, indicating circular symmetry.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\linewidth]{spiral_flight_eigen.png}
+    \caption{Spiral Flight Analysis. Eigenvalues $\lambda_1 \approx \lambda_2$ indicate degeneracy, meaning no unique horizontal direction exists due to circular symmetry.}
+    \label{fig:spiral}
+\end{figure}
+
+\subsection{Comparison: Linear vs Spiral}
+
+Table \ref{tab:comparison} compares the eigenvalue characteristics.
+
+\begin{table}[htbp]
+\caption{Comparison of Flight Trajectory Characteristics}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Property} & \textbf{Linear} & \textbf{Spiral} \\
+\midrule
+$\lambda_1 / \lambda_2$ ratio & $\approx 11.25$ & $\approx 1.64$ \\
+Dominant direction? & Yes & No (degenerate) \\
+Heading recoverable? & Yes ($43.58^{\circ}$) & No \\
+Primary variance \% & $91.0\%$ & $47.1\%$ \\
+\bottomrule
+\end{tabular}
+\label{tab:comparison}
+\end{center}
+\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\linewidth]{flight_comparison.png}
+    \caption{Visual comparison of linear (left) and spiral (right) trajectories. The linear flight shows a clear dominant direction, while the spiral shows circular symmetry in XY-plane.}
+    \label{fig:comparison}
+\end{figure}
+
+\subsection{Orthogonal Projection and Noise Reduction}
+
+PCA projection onto the dominant eigenvector subspace effectively filters noise:
+\begin{equation}
+    \text{proj}_W \mathbf{x} = (\mathbf{x}^T \mathbf{v}_1)\mathbf{v}_1
+\end{equation}
+
+For linear flight with $k=2$ components, explained variance is $99.05\%$, meaning only $0.95\%$ information (noise) is discarded. This demonstrates the effectiveness of PCA for dimensionality reduction.
+% ============================================================================
+% VI. CONCLUSION
+% ============================================================================
+\section{Conclusion and Future Work}
+
+\subsection{Conclusion}
+
+From the experiments and analysis conducted, several interesting findings about eigenvectors and eigenvalues can be concluded:
+
+First, eigenvectors are not just solutions to characteristic equations; they have concrete geometric meaning. In drone analysis, the dominant eigenvector ($\mathbf{v}_1$) successfully indicated flight direction with only $1.42^{\circ}$ error from ground truth. This proves that abstract concepts from linear algebra class are actually very applicable in practice.
+
+Second, eigenvalues represent how ``important'' an eigenvector is. For linear trajectories, the first eigenvalue absorbed $91\%$ of total variance, indicating that data is dominated by one direction. Conversely, for spiral trajectories, the first two eigenvalues are almost equal ($\lambda_1/\lambda_2 \approx 1.64$), indicating no dominant horizontal direction.
+
+Third, diagonalizing the covariance matrix is geometrically equivalent to rotating the coordinate system to align with the data's principal axes. This is the essence of PCA, a very popular technique in data science.
+
+\subsection{Future Work}
+
+For future research, several things can be explored:
+\begin{itemize}
+    \item Apply sliding window eigenanalysis for non-linear trajectories
+    \item Use real drone telemetry data for real-world validation
+    \item Explore kernel PCA for more complex data patterns
+\end{itemize}
+
+% ============================================================================
+% ACKNOWLEDGMENT
+% ============================================================================
+\section*{Acknowledgment}
+First and foremost, I would like to express my gratitude to God Almighty for His blessings and guidance, allowing this paper to be completed successfully. I would also like to extend my deepest appreciation to Mr. Ir. Rila Mandala, M.Eng., Ph.D., the lecturer of IF2123 Linear Algebra and Geometry course, for his invaluable teaching, guidance, and inspiration throughout the semester.
+
+Special thanks to my beloved girlfriend who has always been there with endless support, encouragement, and prayers. Your presence has been my greatest motivation to keep learning and growing. Thank you for being my place to share stories and frustrations during the process of writing this paper.
+
+% ============================================================================
+% REFERENCES
+% ============================================================================
+\begin{thebibliography}{00}
+\bibitem{b1} H. Anton and C. Rorres, \textit{Elementary Linear Algebra with Applications}, 11th ed. Wiley, 2013.
+\bibitem{b2} G. Strang, \textit{Introduction to Linear Algebra}, 5th ed. Wellesley-Cambridge Press, 2016.
+\bibitem{b3} D. C. Lay et al., \textit{Linear Algebra and Its Applications}, 5th ed. Pearson, 2016.
+\bibitem{b4} R. Munir, ``Materi Kuliah IF2123 Aljabar Linier dan Geometri,'' Informatika ITB. [Online]. Available: \url{https://informatika.stei.itb.ac.id/~rinaldi.munir/AlsGeo/alsGeo.htm}
+\bibitem{b5} 3Blue1Brown, ``Essence of Linear Algebra,'' YouTube. [Online]. Available: \url{https://www.youtube.com/playlist?list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab}
+\bibitem{b6} S. Boyd and L. Vandenberghe, \textit{Introduction to Applied Linear Algebra}. Cambridge University Press, 2018.
+\bibitem{b7} I. T. Jolliffe, \textit{Principal Component Analysis}, 2nd ed. Springer, 2002.
+\bibitem{b8} C. M. Bishop, \textit{Pattern Recognition and Machine Learning}. Springer, 2006.
+\bibitem{b9} S. Thrun et al., \textit{Probabilistic Robotics}. MIT Press, 2005.
+\bibitem{b10} P. Corke, \textit{Robotics, Vision and Control}, 2nd ed. Springer, 2017.
+\bibitem{b11} J. Shlens, ``A Tutorial on Principal Component Analysis,'' \textit{arXiv:1404.1100}, 2014.
+\end{thebibliography}
+
+\vspace{12pt}
+
+% STATEMENT
+\section*{PERNYATAAN}
+Dengan ini saya menyatakan bahwa makalah yang saya tulis ini adalah tulisan saya sendiri, bukan saduran, atau terjemahan dari makalah orang lain, dan bukan plagiasi.
+
+\vspace{0.5cm}
+
+\begin{flushright}
+Bandung, 24 Desember 2025 \\[1em]
+\includegraphics[width=4cm]{ttd.jpeg}\\[1em]
+\textbf{Ariel Cornelius Sitorus - 13524085}
+\end{flushright}
+
+\end{document}
