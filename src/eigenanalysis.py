@@ -15,11 +15,10 @@ def eigendecompose(matrix):
     return eigenvalues[idx].real, eigenvectors[:, idx].real
 
 def analyze_eigenstructure(data):
-    """Complete eigenstructure analysis of data."""
+    """Complete eigenstructure analysis."""
     mean_vec, centered, cov_matrix = compute_covariance(data)
     eigenvalues, eigenvectors = eigendecompose(cov_matrix)
     explained_var = eigenvalues / eigenvalues.sum()
-    
     return {
         'mean': mean_vec, 'centered': centered, 'covariance': cov_matrix,
         'eigenvalues': eigenvalues, 'eigenvectors': eigenvectors, 'explained_variance': explained_var
@@ -37,7 +36,7 @@ def reconstruct_data(projected, components, mean_vec):
     return (projected @ components.T) + mean_vec
 
 def compute_reconstruction_error(original, reconstructed):
-    """Compute reconstruction error metrics."""
+    """Compute reconstruction error."""
     diff = original - reconstructed
     mse = np.mean(diff ** 2)
     return {'mse': mse, 'rmse': np.sqrt(mse), 'relative_percent': mse / np.var(original) * 100}

@@ -45,7 +45,7 @@ def visualize_eigenanalysis(data, analysis, title=None, save_path=None, show=Tru
     return fig
 
 def visualize_comparison(data_list, titles, main_title=None, save_path=None, show=True):
-    """Compare multiple datasets side by side."""
+    """Compare multiple datasets."""
     n = len(data_list)
     fig = plt.figure(figsize=(6*n, 6))
     

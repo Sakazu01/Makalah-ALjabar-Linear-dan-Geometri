@@ -7,7 +7,6 @@ def generate_linear_flight(n_samples=500, seed=42):
     white_data = np.random.randn(3, n_samples)
     
     scale = np.array([[10, 0, 0], [0, 3, 0], [0, 0, 1]])
-    
     theta = np.radians(45)
     c, s = np.cos(theta), np.sin(theta)
     rotation_z = np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
@@ -19,11 +18,9 @@ def generate_spiral_flight(n_samples=500, seed=42, radius=10, height=30, n_revol
     """Generate spiral ascent trajectory."""
     np.random.seed(seed)
     t = np.linspace(0, n_revolutions * 2 * np.pi, n_samples)
-    
     x = radius * np.cos(t) + np.random.randn(n_samples) * 0.5
     y = radius * np.sin(t) + np.random.randn(n_samples) * 0.5
     z = (height / (n_revolutions * 2 * np.pi)) * t + np.random.randn(n_samples) * 0.3
-    
     return np.column_stack([x, y, z])
 
 def generate_custom_flight(n_samples=500, seed=42, scale_factors=(10, 3, 1), yaw_deg=45, pitch_deg=0):

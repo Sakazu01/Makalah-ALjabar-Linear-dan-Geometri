@@ -1,4 +1,3 @@
-"""Legacy module - use main.py instead."""
 from data_generation import generate_linear_flight, generate_spiral_flight
 from eigenanalysis import analyze_eigenstructure, pca_transform
 from interpretation import analyze_flight_direction
