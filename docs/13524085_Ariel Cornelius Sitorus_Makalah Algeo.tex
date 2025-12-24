@@ -11,6 +11,12 @@
 \usepackage{multirow}
 \usepackage{listings}
 \usepackage{hyperref}
+\usepackage{fancyhdr}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[L]{\small Makalah IF2123 Aljabar Linier dan Geometri -- Teknik Informatika ITB -- Semester I Tahun 2025/2026}
 
 \definecolor{codegreen}{rgb}{0,0.6,0}
 \definecolor{codegray}{rgb}{0.5,0.5,0.5}
@@ -49,8 +55,8 @@
 \author{\IEEEauthorblockN{Ariel Cornelius Sitorus - 13524085}
 \IEEEauthorblockA{\textit{Program Studi Teknik Informatika} \\
 \textit{Sekolah Teknik Elektro dan Informatika}\\
-\textit{Institut Teknologi Bandung}, Jl. Ganesha 10 Bandung 40132, Indonesia \\
-13524085@std.stei.itb.ac.id}
+\textit{Institut Teknologi Bandung, Jl. Ganesha 10 Bandung 40132, Indonesia} \\
+\textsuperscript{1}\href{mailto:13524085@std.stei.itb.ac.id}{13524085@std.stei.itb.ac.id}, \textsuperscript{2}\href{mailto:arielsitorus504@gmail.com}{arielsitorus504@gmail.com}}
 }
 
 \begin{document}
@@ -81,7 +87,7 @@ In this paper, I will explain:
     \item Practical implementation using Python and NumPy
 \end{itemize}
 
-The paper is structured as follows: Section II covers theoretical foundations on vector spaces and eigendecomposition. Section III explains the drone simulation methodology. Section IV presents the Python implementation. Section V discusses experimental results, and Section VI is the appendix.
+The paper is structured as follows: Section II covers theoretical foundations on vector spaces and eigendecomposition. Section III explains the drone simulation methodology. Section IV presents the Python implementation. Section V discusses experimental results, Section VI is conclusion and future work, and Section VII is the appendix.
 
 \section{Theoretical Foundation}
 
@@ -153,6 +159,54 @@ This proves that:
     \item Eigenvectors (columns of $Q$) are the directions of the principal axes.
     \item Square roots of eigenvalues ($\sqrt{\lambda_i}$) are the lengths of the semi-axes.
 \end{itemize}
+
+\subsubsection{Worked Example: 2D Eigendecomposition}
+Consider a simple 2D covariance matrix:
+\begin{equation}
+    \Sigma = \begin{bmatrix} 5 & 3 \\ 3 & 5 \end{bmatrix}
+\end{equation}
+
+To find eigenvalues, we solve the characteristic equation:
+\begin{equation}
+    \det(\Sigma - \lambda I) = \det\begin{bmatrix} 5-\lambda & 3 \\ 3 & 5-\lambda \end{bmatrix} = 0
+\end{equation}
+
+Expanding:
+\begin{equation}
+    (5-\lambda)^2 - 9 = 0 \implies \lambda^2 - 10\lambda + 16 = 0
+\end{equation}
+
+Using the quadratic formula: $\lambda_1 = 8$ and $\lambda_2 = 2$.
+
+For $\lambda_1 = 8$, we solve $(\Sigma - 8I)\mathbf{v} = 0$:
+\begin{equation}
+    \begin{bmatrix} -3 & 3 \\ 3 & -3 \end{bmatrix} \begin{bmatrix} v_1 \\ v_2 \end{bmatrix} = 0 \implies v_1 = v_2
+\end{equation}
+
+Normalized eigenvector: $\mathbf{v}_1 = \frac{1}{\sqrt{2}}[1, 1]^T$ (45° direction).
+
+For $\lambda_2 = 2$: $\mathbf{v}_2 = \frac{1}{\sqrt{2}}[1, -1]^T$ (135° direction).
+
+This example illustrates how eigenvectors naturally align with the data's principal axes of variation. The eigenvalue ratio $\lambda_1/\lambda_2 = 4$ indicates that variance along $\mathbf{v}_1$ is four times greater than along $\mathbf{v}_2$.
+
+\subsection{Principal Component Analysis (PCA)}
+
+PCA is a direct application of eigendecomposition to dimensionality reduction. Given data matrix $X$ with $N$ samples in $d$ dimensions:
+
+\begin{enumerate}
+    \item Center the data: $\bar{X} = X - \boldsymbol{\mu}$
+    \item Compute covariance: $\Sigma = \frac{1}{N-1}\bar{X}^T\bar{X}$
+    \item Eigendecompose: $\Sigma = Q\Lambda Q^T$
+    \item Project: $Y = \bar{X}Q_k$ where $Q_k$ contains the top $k$ eigenvectors
+\end{enumerate}
+
+The key insight is that projecting onto the eigenvectors with largest eigenvalues preserves maximum variance. This is precisely what we exploit in drone trajectory analysis: the dominant eigenvector captures the primary motion direction.
+
+The explained variance ratio for $k$ components is:
+\begin{equation}
+    \text{Explained Variance} = \frac{\sum_{i=1}^{k} \lambda_i}{\sum_{i=1}^{d} \lambda_i}
+\end{equation}
+
 
 \section{Methodology}
 
@@ -454,6 +508,42 @@ PCA projection onto the dominant eigenvector subspace effectively filters noise:
 
 For linear flight with $k=2$ components, explained variance is $99.05\%$, meaning only $0.95\%$ information (noise) is discarded. This demonstrates the effectiveness of PCA for dimensionality reduction.
 
+\subsection{Eigenvalue Interpretation in Physical Context}
+
+The eigenvalues carry direct physical meaning in drone analysis:
+
+\begin{itemize}
+    \item $\lambda_1 = 96.34$: Represents variance along the primary flight direction. The large value indicates significant displacement in this direction over time.
+    \item $\lambda_2 = 8.56$: Represents lateral drift or slight deviations from the main trajectory.
+    \item $\lambda_3 = 1.01$: Represents sensor noise and minor vertical fluctuations.
+\end{itemize}
+
+The ratio $\lambda_1/\lambda_3 \approx 95$ suggests excellent signal-to-noise ratio in the primary direction. This high ratio is characteristic of well-defined linear motion and enables reliable direction estimation.
+
+\subsection{Analysis of Degenerate Cases}
+
+A critical finding of this study is the detection of \textbf{eigenvalue degeneracy} in spiral trajectories. When $\lambda_1 \approx \lambda_2$, the eigenvectors are ill-defined in the subspace spanned by those eigenvalues.
+
+For the spiral trajectory, we observed:
+\begin{itemize}
+    \item $\lambda_1/\lambda_2 = 1.64$ (near-degenerate)
+    \item This indicates roughly equal variance in two perpendicular horizontal directions
+    \item Geometrically, this corresponds to circular symmetry in the XY-plane
+\end{itemize}
+
+This degeneracy is not a failure of the method; rather, it correctly identifies that no single horizontal direction is dominant. In practical drone navigation, this could indicate hovering, circular patrol patterns, or sensor malfunction.
+
+\subsection{Relationship to Singular Value Decomposition}
+
+The eigendecomposition of the covariance matrix is closely related to the Singular Value Decomposition (SVD) of the centered data matrix. For $\bar{X} = U\Sigma V^T$:
+\begin{equation}
+    \text{Cov}(\bar{X}) = \frac{1}{N-1}\bar{X}^T\bar{X} = \frac{1}{N-1}V\Sigma^2 V^T
+\end{equation}
+
+Thus, the right singular vectors ($V$) are the eigenvectors of the covariance matrix, and the squared singular values are proportional to eigenvalues. This connection is often exploited for numerical stability in high-dimensional settings.
+
+
+
 \section{Conclusion and Future Work}
 
 \subsection{Conclusion}
@@ -511,7 +601,7 @@ any other author's work, and it does not constitute plagiarism.
 \begin{flushright}
 Bandung, December 24, 2025 \\[1em]
 \includegraphics[width=4cm]{ttd.jpeg}\\[1em]
-\textbf{Ariel Cornelius Sitorus - 13524085}
+Ariel Cornelius Sitorus - 13524085
 \end{flushright}
 
 \end{document}
