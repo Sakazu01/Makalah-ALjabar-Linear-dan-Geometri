@@ -1,191 +1,62 @@
-"""
-Main Entry Point
-==================
-Script utama untuk menjalankan analisis drone motion.
-
-Author: Ariel Cornelius Sitorus (13524085)
-Course: IF2123 Aljabar Linier dan Geometri
-
-Usage:
-    python main.py
-"""
-
-import numpy as np
-
-# Import modules
+"""Main script for drone motion eigenanalysis."""
 from data_generation import generate_linear_flight, generate_spiral_flight
 from eigenanalysis import analyze_eigenstructure, pca_transform
 from interpretation import analyze_flight_direction, compare_with_ground_truth, print_analysis_report
 from visualization import visualize_eigenanalysis, visualize_comparison
 
-
-def run_linear_flight_analysis():
-    """Analyze linear flight trajectory."""
-    print("\n" + "=" * 60)
-    print("SCENARIO A: LINEAR FLIGHT ANALYSIS")
-    print("=" * 60)
-    
-    # Generate data
-    print("\n[1] Generating linear flight data...")
+def run_linear_analysis():
+    print("\n" + "="*60 + "\nLINEAR FLIGHT ANALYSIS\n" + "="*60)
     data = generate_linear_flight(n_samples=500, seed=42)
-    print(f"    Data shape: {data.shape}")
-    
-    # Eigenstructure analysis
-    print("\n[2] Performing eigenstructure analysis...")
     analysis = analyze_eigenstructure(data)
     
-    print("\n    Covariance Matrix:")
-    print(analysis['covariance'])
+    print(f"\nCovariance:\n{analysis['covariance']}")
+    print(f"\nEigenvalues: {analysis['eigenvalues']}")
+    print(f"Eigenvectors:\n{analysis['eigenvectors']}")
     
-    print("\n    Eigenvalues:")
-    for i, ev in enumerate(analysis['eigenvalues']):
-        print(f"    L{i+1} = {ev:.4f}")
+    flight = analyze_flight_direction(analysis['eigenvectors'], analysis['eigenvalues'])
+    comparison = compare_with_ground_truth(flight['heading_deg'], 45.0, flight['pitch_deg'], 0.0)
+    print_analysis_report(flight, comparison)
     
-    print("\n    Eigenvectors (columns):")
-    print(analysis['eigenvectors'])
-    
-    # Flight direction interpretation
-    print("\n[3] Interpreting flight direction...")
-    flight_analysis = analyze_flight_direction(
-        analysis['eigenvectors'],
-        analysis['eigenvalues']
-    )
-    
-    # Compare with ground truth (45° yaw, 0° pitch from data generation)
-    comparison = compare_with_ground_truth(
-        estimated_heading=flight_analysis['heading_deg'],
-        true_heading=45.0,
-        estimated_pitch=flight_analysis['pitch_deg'],
-        true_pitch=0.0
-    )
-    
-    print_analysis_report(flight_analysis, comparison)
-    
-    # Visualization
-    print("\n[4] Generating visualization...")
-    visualize_eigenanalysis(
-        data, analysis,
-        title="Linear Flight: Eigenvector Analysis",
-        save_path="linear_flight_eigen.png",
-        show=False
-    )
-    
-    return data, analysis, flight_analysis
+    visualize_eigenanalysis(data, analysis, "Linear Flight", "linear_flight_eigen.png", show=False)
+    return data, analysis
 
-
-def run_spiral_flight_analysis():
-    """Analyze spiral flight trajectory."""
-    print("\n" + "=" * 60)
-    print("SCENARIO B: SPIRAL FLIGHT ANALYSIS")
-    print("=" * 60)
-    
-    # Generate data
-    print("\n[1] Generating spiral flight data...")
+def run_spiral_analysis():
+    print("\n" + "="*60 + "\nSPIRAL FLIGHT ANALYSIS\n" + "="*60)
     data = generate_spiral_flight(n_samples=500, seed=42)
-    print(f"    Data shape: {data.shape}")
-    
-    # Eigenstructure analysis
-    print("\n[2] Performing eigenstructure analysis...")
     analysis = analyze_eigenstructure(data)
     
-    print("\n    Eigenvalues:")
-    for i, ev in enumerate(analysis['eigenvalues']):
-        print(f"    L{i+1} = {ev:.4f}")
+    print(f"\nEigenvalues: {analysis['eigenvalues']}")
+    flight = analyze_flight_direction(analysis['eigenvectors'], analysis['eigenvalues'])
+    print_analysis_report(flight)
     
-    # Flight direction interpretation
-    print("\n[3] Interpreting flight direction...")
-    flight_analysis = analyze_flight_direction(
-        analysis['eigenvectors'],
-        analysis['eigenvalues']
-    )
-    
-    print_analysis_report(flight_analysis)
-    
-    # Visualization
-    print("\n[4] Generating visualization...")
-    visualize_eigenanalysis(
-        data, analysis,
-        title="Spiral Flight: Eigenvector Analysis",
-        save_path="spiral_flight_eigen.png",
-        show=False
-    )
-    
-    return data, analysis, flight_analysis
-
+    visualize_eigenanalysis(data, analysis, "Spiral Flight", "spiral_flight_eigen.png", show=False)
+    return data, analysis
 
 def run_pca_demo():
-    """Demonstrate PCA dimensionality reduction."""
-    print("\n" + "=" * 60)
-    print("PCA DIMENSIONALITY REDUCTION DEMO")
-    print("=" * 60)
-    
-    # Generate data
+    print("\n" + "="*60 + "\nPCA DEMO\n" + "="*60)
     data = generate_linear_flight(n_samples=500, seed=42)
-    
-    # Apply PCA
-    print("\n[1] Applying PCA (3D -> 2D)...")
-    projected, explained_var, components = pca_transform(data, n_components=2)
-    
-    print(f"\n    Original shape: {data.shape}")
-    print(f"    Projected shape: {projected.shape}")
-    print(f"\n    Explained variance:")
-    print(f"    PC1: {explained_var[0]*100:.2f}%")
-    print(f"    PC2: {explained_var[1]*100:.2f}%")
-    print(f"    Total: {explained_var.sum()*100:.2f}%")
-    
-    return projected, explained_var
-
+    projected, explained, _ = pca_transform(data, n_components=2)
+    print(f"\nOriginal: {data.shape}, Projected: {projected.shape}")
+    print(f"Explained variance: PC1={explained[0]*100:.2f}%, PC2={explained[1]*100:.2f}%, Total={explained.sum()*100:.2f}%")
 
 def run_comparison():
-    """Compare linear vs spiral flight."""
-    print("\n" + "=" * 60)
-    print("COMPARISON: LINEAR vs SPIRAL FLIGHT")
-    print("=" * 60)
+    print("\n" + "="*60 + "\nCOMPARISON\n" + "="*60)
+    linear = generate_linear_flight(), analyze_eigenstructure(generate_linear_flight())
+    spiral = generate_spiral_flight(), analyze_eigenstructure(generate_spiral_flight())
     
-    # Generate both datasets
-    linear_data = generate_linear_flight(n_samples=500)
-    spiral_data = generate_spiral_flight(n_samples=500)
+    r1 = linear[1]['eigenvalues'][0] / linear[1]['eigenvalues'][1]
+    r2 = spiral[1]['eigenvalues'][0] / spiral[1]['eigenvalues'][1]
+    print(f"\nLinear L1/L2: {r1:.2f}, Spiral L1/L2: {r2:.2f}")
     
-    # Analyze both
-    linear_analysis = analyze_eigenstructure(linear_data)
-    spiral_analysis = analyze_eigenstructure(spiral_data)
-    
-    # Compare eigenvalue ratios
-    linear_ratio = linear_analysis['eigenvalues'][0] / linear_analysis['eigenvalues'][1]
-    spiral_ratio = spiral_analysis['eigenvalues'][0] / spiral_analysis['eigenvalues'][1]
-    
-    print(f"\n    Linear flight L1/L2 ratio: {linear_ratio:.2f}")
-    print(f"    Spiral flight L1/L2 ratio: {spiral_ratio:.2f}")
-    print(f"\n    Linear: Dominant single direction")
-    print(f"    Spiral: Near-degenerate (circular symmetry)")
-    
-    # Side-by-side visualization
-    visualize_comparison(
-        [(linear_data, linear_analysis), (spiral_data, spiral_analysis)],
-        ['Linear Flight', 'Spiral Flight'],
-        main_title='Comparison of Flight Trajectories',
-        save_path='flight_comparison.png',
-        show=False
-    )
-
+    visualize_comparison([linear, spiral], ['Linear', 'Spiral'], 'Comparison', 'flight_comparison.png', show=False)
 
 def main():
-    """Main entry point."""
-    print("=" * 60)
-    print("DRONE MOTION ANALYSIS USING LINEAR ALGEBRA")
-    print("Eigenvectors as Directions of Meaning")
-    print("=" * 60)
-    
-    # Run analyses
-    run_linear_flight_analysis()
-    run_spiral_flight_analysis()
+    print("="*60 + "\nDRONE MOTION EIGENANALYSIS\n" + "="*60)
+    run_linear_analysis()
+    run_spiral_analysis()
     run_pca_demo()
     run_comparison()
-    
-    print("\n" + "=" * 60)
-    print("ANALYSIS COMPLETE")
-    print("=" * 60)
-
+    print("\n" + "="*60 + "\nDONE\n" + "="*60)
 
 if __name__ == "__main__":
     main()

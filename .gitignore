@@ -44,3 +44,6 @@ desktop.ini
 # Temporary
 *.tmp
 *.temp
+
+# Generated images in src (originals are in docs)
+src/*.png
